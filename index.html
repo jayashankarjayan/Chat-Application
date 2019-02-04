@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Chat socket</title>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <style media="screen" type="text/css">
+      *
+      {
+        background: #343a40;
+        font-family: 'Roboto', sans-serif;
+      }
+
+      .welcome
+      {
+        color:#6c757d;
+      }
+
+      .welcome-horizontal, #message-end
+      {
+        border: 1px solid #6c757d;
+      }
+
+      #message-end
+      {
+        width: 300px;
+      }
+
+      .input-message
+      {
+        position: fixed; bottom: 0
+      }
+
+      #messages li
+      {
+        padding: 3px 10px;
+      }
+
+      .text-right, .text-left
+      {
+        color: #fff;
+      }
+
+      .form-control, .btn
+      {
+      	border-radius:0 !important;
+      }
+
+      .form-control
+      {
+      	border:none;
+      	border-bottom:1px solid #ced4da;
+      }
+
+      .form-control:focus
+      {
+      	box-shadow: none;
+      }
+
+      #snackbar {
+        visibility: hidden; /* Hidden by default. Visible on click */
+        min-width: 250px; /* Set a default minimum width */
+        margin-left: -125px; /* Divide value of min-width by 2 */
+        background-color: #333; /* Black background color */
+        color: #fff; /* White text color */
+        text-align: center; /* Centered text */
+        border-radius: 2px; /* Rounded borders */
+        padding: 16px; /* Padding */
+        position: fixed; /* Sit on top of the screen */
+        z-index: 1; /* Add a z-index if needed */
+        left: 50%; /* Center the snackbar */
+        bottom: 30px; /* 30px from the bottom */
+      }
+
+      /* Show the snackbar when clicking on a button (class added with JavaScript) */
+      #snackbar.show {
+        visibility: visible; /* Show the snackbar */
+        /* Add animation: Take 0.5 seconds to fade in and out the snackbar.
+        However, delay the fade out process for 2.5 seconds */
+        -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        animation: fadein 0.5s, fadeout 0.5s 2.5s;
+      }
+
+      /* Animations to fade the snackbar in and out */
+      @-webkit-keyframes fadein {
+        from {bottom: 0; opacity: 0;}
+        to {bottom: 30px; opacity: 1;}
+      }
+
+      @keyframes fadein {
+        from {bottom: 0; opacity: 0;}
+        to {bottom: 30px; opacity: 1;}
+      }
+
+      @-webkit-keyframes fadeout {
+        from {bottom: 30px; opacity: 1;}
+        to {bottom: 0; opacity: 0;}
+      }
+
+      @keyframes fadeout {
+        from {bottom: 30px; opacity: 1;}
+        to {bottom: 0; opacity: 0;}
+      }
+
+    </style>
+    <script>
+    $("#main").click(function() {
+      $("#mini-fab").toggle();
+    });
+
+    $(document).ready(function(){
+      var socket;
+      $("#greeting").hide();
+      var username = null;
+      function get_user_name_from_user()
+      {
+        var user = prompt("Please enter your name", "");
+        if(user)
+        {
+          $("#greeting").show();
+          socket = io();
+          data = '{"user_name" : "' + user + '"}';
+          socket.emit('user-joined', data);
+        }
+        return user
+      }
+
+      while (!username)
+      {
+        alert("Please enter your name to proceed");
+        username = get_user_name_from_user();
+      }
+
+      socket.on('user-joined', function(data){
+
+        for(i=0;i<data.length;i++)
+        {
+          // socket.to(data[i]).emit('Hey', " someone new is active");
+          if(data[i] != username)
+          {
+            console.log(data[i] + " has joined");
+            $("#snackbar").text(data[i] + " has joined");
+            $("#snackbar").addClass("show");
+            setTimeout(function(){ $("#snackbar").removeClass("show"); }, 3000);
+          }
+        }
+
+      });
+
+
+        $(function () {
+          $('form').submit(function(e){
+            $("#greeting").hide();
+            e.preventDefault();
+            message = $('#m').val();
+
+            data = '{"msg" : "' + message + '" ,"user_name" : "' + username + '"}';
+            var admin_commands = [
+              "ls -msgs",
+              "ls -users"
+            ]
+            if(admin_commands.indexOf(message) < 0)
+            {
+              socket.emit('chat message',  data);
+            }
+            else
+            {
+              if(username == "Jayashankar" || username == "Jay")
+              {
+                if(message == "ls -msgs")
+                {
+                  socket.emit('get-user-messages');
+                }
+                if(message == "ls -users")
+                {
+                  socket.emit('get-users');
+                  socket.on("get-users", function(info){
+                    alert(info);
+                  });
+                }
+
+              }
+            }
+            $('#m').val('');
+
+            return false;
+          });
+
+          // socket.on("user-joined", function(data){
+          //
+          // });
+
+          socket.on('chat message', function(info){
+            information = JSON.parse(info);
+
+            msg = information.message;
+            sent_by = information.sent_by;
+            timestamp = information.timestamp;
+
+            var message_display_alignment = "right";
+            if(sent_by != username)
+            {
+              message_display_alignment = "left";
+            }
+            display_message = '<div class="user-id text-' + message_display_alignment + '"><strong><span style="font-size:15px;"><i>&ndash; &nbsp;' + sent_by + '</i></span></strong><p>' + msg + '&nbsp;&nbsp;|&nbsp;&nbsp;<span style="font-size:12px;">' + timestamp + '</span></p><hr id="message-end" align="' + message_display_alignment + '"/></div>';
+            $('#messages').append(display_message);
+
+            window.scrollTo(0,document.body.scrollHeight);
+
+          });
+
+          socket.on('disconnect', function(info){
+            alert(info);
+          });
+        });
+
+    });
+    </script>
+  </head>
+  <body>
+
+    <div class="container-fluid" id="messages-container">
+
+      <div class="row">
+        <div class="col-md-12 mb-5">
+          <div id="messages"></div>
+        </div>
+      </div>
+    </div>
+
+    <form action="">
+      <div class="">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="text-center align-middle" id="greeting">
+              <h1 class="welcome">
+                <strong>
+                  Welcome
+                </strong>
+              </h1>
+              <hr class="welcome-horizontal col-md-4 col-sm-2 col-xs-2">
+              <h3 class="welcome">
+                Start messaging
+              </h3>
+              <div id="snackbar"></div>
+            </div>
+            <div class="input-group input-message align-text-bottom">
+              <input id="m" type="text" autocomplete="false" autofocus class="form-control" placeholder="Message" aria-label="Message" aria-describedby="send-message-button">
+              <div class="input-group-append">
+                <button class="btn btn-secondary" type="button" id="send-message-button">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </body>
+</html>
